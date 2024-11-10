@@ -14,7 +14,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,14 +62,13 @@ fun MapBox(
     var pointAnnotationManager: PointAnnotationManager? by remember { mutableStateOf(null) }
     var currentMarker: PointAnnotation? by remember { mutableStateOf(null) }
 
-    LaunchedEffect(Unit) {
+    val fetchCurrentLocation = {
         activity?.let {
             // Ensure location permissions are granted before accessing location
-            if (ActivityCompat.checkSelfPermission(
-                    it,
-                    android.Manifest.permission.ACCESS_FINE_LOCATION
-                ) == PackageManager.PERMISSION_GRANTED
-            ) {
+            val permissionStatus = ActivityCompat.checkSelfPermission(
+                it, android.Manifest.permission.ACCESS_FINE_LOCATION
+            )
+            if (permissionStatus == PackageManager.PERMISSION_GRANTED) {
                 val fusedLocationProviderClient =
                     LocationServices.getFusedLocationProviderClient(it)
 
@@ -80,7 +78,7 @@ fun MapBox(
                         selectedLocation = userLocation
 
                         // Center the camera to the user's current location
-                        mapView?.getMapboxMap()?.setCamera(
+                        mapView?.mapboxMap?.setCamera(
                             CameraOptions.Builder()
                                 .center(userLocation)
                                 .zoom(14.0)
@@ -107,6 +105,7 @@ fun MapBox(
 
     Column {
         // Search bar
+
         TextField(
             value = searchQuery,
             onValueChange = {
@@ -124,14 +123,22 @@ fun MapBox(
             singleLine = true
         )
 
+
         // Show search results
         searchResults.forEach { result ->
             TextButton(onClick = {
                 selectedLocation = result.second
                 searchQuery = result.first
-                onLocationSelected(result.first, result.second.latitude(), result.second.longitude())
+                onLocationSelected(
+                    result.first,
+                    result.second.latitude(),
+                    result.second.longitude()
+                )
 
-                performReverseGeocoding(result.second.latitude(), result.second.longitude()) { address ->
+                performReverseGeocoding(
+                    result.second.latitude(),
+                    result.second.longitude()
+                ) { address ->
                     onAddressFetched(address)
                 }
 
@@ -163,7 +170,7 @@ fun MapBox(
 
 
                 // Load the map style and set up the gesture plugin
-                getMapboxMap().loadStyleUri(Style.SATELLITE_STREETS) {style ->
+                mapboxMap.loadStyleUri(Style.SATELLITE_STREETS) { style ->
                     style.addImage(
                         "marker",
                         BitmapFactory.decodeResource(context.resources, R.drawable.marker)
@@ -195,6 +202,7 @@ fun MapBox(
                             .build()
                         getMapboxMap().flyTo(cameraOptions)
                     }
+                    fetchCurrentLocation()
                 }
             }
         }, modifier = Modifier.fillMaxSize())
