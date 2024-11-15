@@ -4,7 +4,6 @@ package com.example.civicalertoriginal.Components
 
 import android.content.Intent
 import android.net.Uri
-
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -275,39 +274,21 @@ fun InstructionText(value: String){
     )
 }
 @Composable
-fun LocationTextFields(
-    value: String,
-    onChange: (String) -> Unit,
-    fieldLabel: String,
-    navController: NavController // Pass the NavController as a parameter
-) {
-    Column(
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onChange,
-            placeholder = {
-                Text(
-                    text = value,
-                    color = Color.Black,
-                    fontWeight = FontWeight.Bold
-                )
-            },
+fun LocationTextFields(value: String, onChange: (String) -> Unit, fieldLabel: String){
+    Column (verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally){
+        OutlinedTextField(value = value , onValueChange = onChange,
+            placeholder = { Text(text = fieldLabel, color = Color.Green)},
             trailingIcon = {
                 Icon(
                     modifier = Modifier
-                        .size(35.dp)
-                        .clickable { navController.navigate("mapbox") },
+                        .size(35.dp, 35.dp)
+                        .clickable { },
                     imageVector = Icons.Default.LocationOn,
-                    contentDescription = "Location Icon",
-                    tint = Color.Green
-                )
-            },
+                    contentDescription = "Location Icon"
+                ) },
             keyboardOptions = KeyboardOptions.Default,
-            textStyle = TextStyle(color = Color.Black),
-            modifier = Modifier
+            textStyle = TextStyle(color = Color.Black ), modifier = Modifier
                 .height(50.dp)
                 .fillMaxWidth()
                 .background(Color.White)
