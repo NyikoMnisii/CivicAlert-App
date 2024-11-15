@@ -2,6 +2,8 @@ package civicalertoriginal.Screen
 
 import android.content.Context
 import android.os.Build
+
+import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
@@ -12,6 +14,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,6 +31,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -54,11 +60,13 @@ import com.example.civicalertoriginal.Components.PictureTextFields
 import com.example.civicalertoriginal.Components.ReportDescriptionText
 import com.example.civicalertoriginal.Components.SubmitButton
 import com.example.civicalertoriginal.R
+
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+
 
 data class Reports(
     val incidentType: String = "",
@@ -96,12 +104,16 @@ fun generateReferenceNumber(context: Context): String {
     return "$datePart-$timePart-$incrementedPart"
 }
 
+
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MakeReports(navController: NavController) {
     var isVisible by remember { mutableStateOf(false) }
-    val context = LocalContext.current
     val auth = FirebaseAuth.getInstance()
+    var locationText by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val sharedP = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+    locationText = sharedP.getString("incidentAddress", "").toString()
 
     LaunchedEffect(Unit) {
         isVisible = true
@@ -123,10 +135,17 @@ fun MakeReports(navController: NavController) {
                 animationSpec = tween(1000, easing = LinearEasing)
             )
         ) {
-            AnimatedMakeReports(navController, email) {
-                isVisible = false
-                navController.navigate("Dashboard")
+
+            // Define onClose action with explicit type
+            val onClose: () -> Unit = {
+                // Handle the close action, e.g., navigate back
+                navController.popBackStack()
             }
+
+            // Pass the mutable locationText and the onClose function to AnimatedMakeReports
+            AnimatedMakeReports(navController, locationText, onLocationChange = { newLocation ->
+                locationText = newLocation
+            }, onClose = onClose)
         }
     }
 }
@@ -140,6 +159,8 @@ fun AnimatedMakeReports(navController: NavController, userEmail: String, onClose
     var location by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var picture by remember { mutableStateOf("") }
+    var selectedIncident by remember { mutableStateOf("Water") }
+
     val context = LocalContext.current
     val currentDateTime = LocalDateTime.now()
     val formattedDateTime = currentDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
@@ -152,13 +173,14 @@ fun AnimatedMakeReports(navController: NavController, userEmail: String, onClose
         verticalArrangement = Arrangement.spacedBy(30.dp),
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = 16.dp, end = 16.dp, top = 50.dp)
+            .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
             Icon(
                 imageVector = Icons.Default.ArrowBack,
-                contentDescription = "",
+
+                contentDescription = "Back",
                 modifier = Modifier
                     .size(30.dp)
                     .clickable { onClose() },
@@ -172,6 +194,8 @@ fun AnimatedMakeReports(navController: NavController, userEmail: String, onClose
                 color = Color.Black
             )
         }
+
+        // Incident type dropdown
         ReportDescriptionText(
             value1 = "Incident",
             value = "Choose Incident type"
@@ -179,22 +203,30 @@ fun AnimatedMakeReports(navController: NavController, userEmail: String, onClose
         var selectedIncident by remember { mutableStateOf("Water") }
         ExposedDropdownMenuBox(
             selectedIncident = selectedIncident,
-            onIncidentSelected = { newIncident -> selectedIncident = newIncident })
-
+            onIncidentSelected = { newIncident -> selectedIncident = newIncident }
+        )
+        // Location section
         ReportDescriptionText(
             value1 = "Location",
             value = "Share the location of the incident"
         )
-        LocationTextFields(value = location,
-            onChange = { location = it },
-            fieldLabel = " Enter location")
 
+        LocationTextFields(
+            value = locationText,
+            onChange = { updatedLocation ->
+                onLocationChange(updatedLocation)
+            },
+            fieldLabel = "Enter location",
+            navController = navController
+        )
+
+        // Photos and description section
         ReportDescriptionText(
-            value1 = "Photos",
+
+            value1 = "Photos (Optional)",
             value = "Take photos of the incident you are reporting"
         )
-        var picture by remember { mutableStateOf("") }
-        PictureTextFields(value = picture, onChange = { picture = it }, navController = navController)
+        PictureTextFields(value = picture, onChange = { picture = it })
 
         ReportDescriptionText(
             value1 = "Report Description *",
@@ -206,9 +238,10 @@ fun AnimatedMakeReports(navController: NavController, userEmail: String, onClose
             fieldLabel = "brief description of the incident"
         )
 
+        // Create a report object
         val userReport = Reports(
             incidentType = selectedIncident,
-            location = location,
+            location = locationText,
             description = description,
             dateTime = formattedDateTime,
             refNumber = referenceNumber,
@@ -216,23 +249,24 @@ fun AnimatedMakeReports(navController: NavController, userEmail: String, onClose
             userID = userEmail // Set userID to current user's email
         )
 
-        fun saveReport(report: Reports) {
-            // Associate the report with the user using UID
-            val reportWithUser = mapOf(
-                "incidentType" to report.incidentType,
-                "location" to report.location,
-                "description" to report.description,
-                "dateTime" to report.dateTime,
-                "refNumber" to report.refNumber,
-                "status" to report.status,
-                "userID" to report.userID
-            )
-
             // Use the reference number as the key
             myRef.child(report.refNumber).setValue(reportWithUser).addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     // Handle success
                     showDialog = true // Show the dialog upon successful submission
+        )
+
+        // Save the report to Firebase
+        fun saveReport(report: Reports) {
+            val userId = myRef.push().key ?: return
+            myRef.child(userId).setValue(report).addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Toast.makeText(context, "Your report has been submitted.", Toast.LENGTH_SHORT).show()
+                    // Clear the fields
+                    description = ""
+                    picture = ""
+                    selectedIncident = "Water" // Reset to default
+                    onLocationChange("") // Clear location
                 } else {
                     // Handle failure
                     task.exception?.let {
@@ -258,8 +292,21 @@ fun AnimatedMakeReports(navController: NavController, userEmail: String, onClose
                 onClose() // Close the current screen or perform other actions on dismiss
             })
         }
+        // Submit button
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            SubmitButton(name = "Submit") {
+                if (description.isBlank()) {
+                    Toast.makeText(context, "Please enter a description", Toast.LENGTH_SHORT).show()
+                } else {
+                    saveReport(userReport)
+                    navController.navigate("Dashboard")
+                }
+            }
+        }
+        Spacer(modifier = Modifier.size(8.dp))
     }
 }
+
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable

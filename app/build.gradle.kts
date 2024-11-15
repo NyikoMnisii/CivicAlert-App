@@ -71,10 +71,21 @@ dependencies {
     implementation (libs.androidx.camera.extensions)
     implementation ("com.google.android.gms:play-services-auth:20.6.0")
 
+    implementation ("com.mapbox.maps:android:11.6.0") {
+        exclude (group = "group_name", module = "module_name")
+    }
+    implementation ("com.mapbox.mapboxsdk:mapbox-sdk-services:6.6.0"){
+        exclude (group = "group_name", module = "module_name")
+    }
+
+
+
     implementation(libs.androidx.activity)
     implementation(libs.coil.compose)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.camera.view)
+    implementation(libs.androidx.runtime.livedata)
+    implementation(libs.play.services.location)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
