@@ -352,7 +352,7 @@ fun ExposedDropdownMenuBox(
     onIncidentSelected: (String) -> Unit
 ) {
     val context = LocalContext.current
-    val Incidents= arrayOf("Water", "Electricity", "Pothole", "Other")
+    val Incidents= arrayOf("Water", "Electricity", "Pothole", "Other", "Damaged Traffic Light")
     var expanded by remember { mutableStateOf(false) }
 
 
