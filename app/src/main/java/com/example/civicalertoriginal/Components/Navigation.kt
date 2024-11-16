@@ -4,14 +4,10 @@ import LogIn
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import civicalertoriginal.Screen.MakeReports
+import ci.MakeReports
 import com.example.civicalertoriginal.Screens.ContactUs
 import com.example.civicalertoriginal.Screens.Dashboard
 import com.example.civicalertoriginal.Screens.ForgotPassword
@@ -26,10 +22,6 @@ import com.example.civicalertoriginal.Screens.ViewReports
 fun Navigation() {
     val navController = rememberNavController()
 
-    // State for location details
-    var locationName by remember { mutableStateOf("") }
-    var latitude by remember { mutableStateOf(0.0) }
-    var longitude by remember { mutableStateOf(0.0) }
 
     NavHost(navController = navController, startDestination = "makeReports") {
         composable("registration") {

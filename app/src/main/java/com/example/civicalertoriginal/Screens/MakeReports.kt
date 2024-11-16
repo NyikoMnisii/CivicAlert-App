@@ -1,6 +1,7 @@
-package civicalertoriginal.Screen
+package ci
 
 import android.content.Context
+import android.net.Uri
 import android.os.Build
 import android.widget.Toast
 import androidx.annotation.RequiresApi
@@ -47,19 +48,19 @@ import com.example.civicalertoriginal.Components.LocationTextFields
 import com.example.civicalertoriginal.Components.PictureTextFields
 import com.example.civicalertoriginal.Components.ReportDescriptionText
 import com.example.civicalertoriginal.Components.SubmitButton
-import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
+import com.google.firebase.storage.StorageReference
+import com.google.firebase.storage.ktx.storage
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-
 
 data class Reports(
     val incidentType: String = "",
     var location: String = "",
-    val description: String ="",
-    val dateTime: String ="",
-
+    val description: String = "",
+    val dateTime: String = "",
 )
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -88,16 +89,13 @@ fun MakeReports(navController: NavController) {
                 animationSpec = tween(1000, easing = LinearEasing)
             )
         ) {
-            // Define onClose action with explicit type
-            val onClose: () -> Unit = {
-                // Handle the close action, e.g., navigate back
-                navController.popBackStack()
-            }
-
-            // Pass the mutable locationText and the onClose function to AnimatedMakeReports
-            AnimatedMakeReports(navController, locationText, onLocationChange = { newLocation ->
-                locationText = newLocation
-            }, onClose = onClose)
+            // Separate the Close Action
+            AnimatedMakeReports(
+                navController = navController,
+                locationText = locationText,
+                onLocationChange = { locationText = it },
+                onClose = { navController.popBackStack() }
+            )
         }
     }
 }
@@ -110,19 +108,16 @@ fun AnimatedMakeReports(
     onLocationChange: (String) -> Unit,
     onClose: () -> Unit
 ) {
-    // Remove mutableLocationText as state is being passed down
+    // State Management
     var description by remember { mutableStateOf("") }
-    var picture by remember { mutableStateOf("") }
+    var pictureUri: Uri? by remember { mutableStateOf(null) }
     var selectedIncident by remember { mutableStateOf("Water") }
 
-    // Firebase setup
-    val database = Firebase.database
-    val myRef = database.getReference("Make Report Instance")
-    val auth = FirebaseAuth.getInstance()
-
+    // Firebase References
+    val database = Firebase.database.reference.child("Make Report Instance")
+    val storage = Firebase.storage.reference
     val context = LocalContext.current
-    val currentDateTime = LocalDateTime.now()
-    val formattedDateTime = currentDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+    val currentDateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
 
     Column(
         verticalArrangement = Arrangement.spacedBy(30.dp),
@@ -131,7 +126,11 @@ fun AnimatedMakeReports(
             .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
+        // Header Section
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start
+        ) {
             Icon(
                 imageVector = Icons.Default.ArrowBack,
                 contentDescription = "Back",
@@ -149,83 +148,57 @@ fun AnimatedMakeReports(
             )
         }
 
-        // Incident type dropdown
-        ReportDescriptionText(
-            value1 = "Incident",
-            value = "Choose Incident type"
-        )
+        // Incident Type Dropdown
+        ReportDescriptionText("Incident", "Choose Incident type")
         ExposedDropdownMenuBox(
             selectedIncident = selectedIncident,
-            onIncidentSelected = { newIncident -> selectedIncident = newIncident }
+            onIncidentSelected = { selectedIncident = it }
         )
 
-        // Location section
-        ReportDescriptionText(
-            value1 = "Location",
-            value = "Share the location of the incident"
-        )
+        // Location Section
+        ReportDescriptionText("Location", "Share the location of the incident")
         LocationTextFields(
             value = locationText,
-            onChange = { updatedLocation ->
-                onLocationChange(updatedLocation)
-            },
+            onChange = onLocationChange,
             fieldLabel = "Enter location",
             navController = navController
         )
 
-        // Photos and description section
-        ReportDescriptionText(
-            value1 = "Photos (Optional)",
-            value = "Take photos of the incident you are reporting"
-        )
-        PictureTextFields(value = picture, onChange = { picture = it })
+        // Photo and Description
+        ReportDescriptionText("Photos (Optional)", "Take photos of the incident you are reporting")
+        PictureTextFields(value = pictureUri?.toString() ?: "", onChange = { pictureUri = Uri.parse(it) })
 
-        ReportDescriptionText(
-            value1 = "Report Description *",
-            value = "Short Description of the incident"
-        )
-        DescriptionTextFields(
-            value = description,
-            onChange = { description = it },
-            fieldLabel = "Describe the incident"
-        )
+        ReportDescriptionText("Report Description *", "Short Description of the incident")
+        DescriptionTextFields(value = description, onChange = { description = it }, fieldLabel = "Describe the incident")
 
-        // Create a report object
+        // Create Report Object
         val userReport = Reports(
             incidentType = selectedIncident,
             location = locationText,
             description = description,
-            dateTime = formattedDateTime
+            dateTime = currentDateTime
         )
 
-        // Save the report to Firebase
-        fun saveReport(report: Reports) {
-            val userId = myRef.push().key ?: return
-            myRef.child(userId).setValue(report).addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    Toast.makeText(context, "Your report has been submitted.", Toast.LENGTH_SHORT).show()
-                    // Clear the fields
-                    description = ""
-                    picture = ""
-                    selectedIncident = "Water" // Reset to default
-                    onLocationChange("") // Clear location
-                } else {
-                    // Handle failure
-                    task.exception?.let {
-                        println("Error saving user: ${it.message}")
-                    }
-                }
-            }
-        }
-
-        // Submit button
+        // Submit Button
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            SubmitButton(name = "Submit") {
+            SubmitButton("Submit") {
                 if (description.isBlank()) {
                     Toast.makeText(context, "Please enter a description", Toast.LENGTH_SHORT).show()
                 } else {
-                    saveReport(userReport)
-                    navController.navigate("Dashboard")
+                    handleReportSubmission(
+                        report = userReport,
+                        photoUri = pictureUri,
+                        database = database,
+                        storage = storage,
+                        context = context,
+                        onSuccess = {
+                            Toast.makeText(context, "Report submitted successfully", Toast.LENGTH_SHORT).show()
+                            navController.navigate("Dashboard")
+                        },
+                        onFailure = { error ->
+                            Toast.makeText(context, "Error: $error", Toast.LENGTH_SHORT).show()
+                        }
+                    )
                 }
             }
         }
@@ -233,11 +206,52 @@ fun AnimatedMakeReports(
     }
 }
 
+/**
+ * Handles the submission of a report, including uploading photos and saving the report.
+ */
+fun handleReportSubmission(
+    report: Reports,
+    photoUri: Uri?,
+    database: DatabaseReference,
+    storage: StorageReference,
+    context: Context,
+    onSuccess: () -> Unit,
+    onFailure: (String) -> Unit
+) {
+    if (photoUri != null) {
+        val photoRef = storage.child("incident_photos/${System.currentTimeMillis()}.jpg")
+        photoRef.putFile(photoUri)
+            .addOnSuccessListener {
+                photoRef.downloadUrl.addOnSuccessListener { uri ->
+                    val updatedReport = report.copy(description = "${report.description}\nPhoto: $uri")
+                    saveReportToDatabase(updatedReport, database, onSuccess, onFailure)
+                }
+            }
+            .addOnFailureListener { onFailure(it.message ?: "Photo upload failed") }
+    } else {
+        saveReportToDatabase(report, database, onSuccess, onFailure)
+    }
+}
+
+/**
+ * Saves the report to Firebase Realtime Database.
+ */
+fun saveReportToDatabase(
+    report: Reports,
+    database: DatabaseReference,
+    onSuccess: () -> Unit,
+    onFailure: (String) -> Unit
+) {
+    val reportId = database.push().key ?: return onFailure("Could not generate report ID")
+    database.child(reportId).setValue(report)
+        .addOnSuccessListener { onSuccess() }
+        .addOnFailureListener { onFailure(it.message ?: "Failed to save report") }
+}
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Preview
 @Composable
 fun MakeReportsPreview() {
     val navController = rememberNavController()
-    MakeReports(navController = navController)
+    MakeReports(navController)
 }

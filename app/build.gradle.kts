@@ -69,6 +69,8 @@ dependencies {
     implementation (libs.androidx.camera.lifecycle)
     implementation (libs.androidx.camera.view.v110)
     implementation (libs.androidx.camera.extensions)
+
+    implementation ("io.coil-kt:coil-compose:2.4.0")
     implementation ("com.google.android.gms:play-services-auth:20.6.0")
 
     implementation ("com.mapbox.maps:android:11.6.0") {
@@ -86,6 +88,7 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation(libs.androidx.runtime.livedata)
     implementation(libs.play.services.location)
+    implementation(libs.firebase.storage.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

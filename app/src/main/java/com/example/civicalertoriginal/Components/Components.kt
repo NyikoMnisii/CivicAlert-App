@@ -1,8 +1,12 @@
-@file:Suppress("UNUSED_EXPRESSION")
+
 
 package com.example.civicalertoriginal.Components
 
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,7 +30,6 @@ import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -65,6 +68,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import coil.compose.rememberAsyncImagePainter
 import com.example.civicalertoriginal.R
 
 
@@ -229,6 +233,69 @@ fun CardButton(iconRes: Int, label: String, onClick: () -> Unit) {
         }
     }
 }
+@Composable
+fun ContactUsContactButton(value: String, phoneNumber: String) {
+    val context = LocalContext.current
+
+    Button(
+        onClick = {
+            // Dialer Intent
+            val dialIntent = Intent(Intent.ACTION_DIAL).apply {
+                data = Uri.parse("tel:$08299999999")
+            }
+            context.startActivity(dialIntent)
+        },
+        colors = ButtonDefaults.buttonColors(
+            contentColor = Color.Black, containerColor = Color.White
+        ),
+        shape = RoundedCornerShape(15.dp),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 16.dp),
+        modifier = Modifier
+            .padding(8.dp)
+            .size(170.dp, 50.dp)
+    ) {
+        Icon(imageVector = Icons.Default.Call, contentDescription = "", modifier = Modifier.size(20.dp))
+        Spacer(modifier = Modifier.size(5.dp))
+        Text(text = value, fontSize = 15.sp)
+    }
+}
+
+
+@Composable
+fun ContactUSEmailButton(value: String, email: String) {
+    val context = LocalContext.current
+
+    Button(
+        onClick = {
+            // Email Intent
+            val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
+                data = Uri.parse("mailto:Civicalert300@gmail.com") // Only email apps should handle this
+                putExtra(Intent.EXTRA_EMAIL, arrayOf(email)) // Recipient
+                putExtra(Intent.EXTRA_SUBJECT, "Your Subject Here") // Optional subject
+                putExtra(Intent.EXTRA_TEXT, "Your message here.") // Optional message body
+            }
+
+            // Verify there is an email app installed before trying to open it
+            if (emailIntent.resolveActivity(context.packageManager) != null) {
+                context.startActivity(emailIntent)
+            } else {
+                Toast.makeText(context, "No email app found.", Toast.LENGTH_SHORT).show()
+            }
+        },
+        colors = ButtonDefaults.buttonColors(
+            contentColor = Color.Black, containerColor = Color.White
+        ),
+        shape = RoundedCornerShape(15.dp),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 16.dp),
+        modifier = Modifier
+            .padding(8.dp)
+            .size(170.dp, 50.dp)
+    ) {
+        Icon(imageVector = Icons.Default.Email, contentDescription = "", modifier = Modifier.size(20.dp))
+        Spacer(modifier = Modifier.size(5.dp))
+        Text(text = value, fontSize = 18.sp)
+    }
+}
 
 @Composable
 fun LogBottomButtons(name: String, onClick: () -> Unit, enabled: Boolean){
@@ -268,6 +335,24 @@ fun InstructionText(value: String){
             color = Color.Black
         )
     )
+}
+@Composable
+fun UpdateProfileButton(name: String, onClick: () -> Unit) {
+    Button(
+        onClick = onClick, shape = ButtonDefaults.shape,
+        colors = ButtonDefaults.buttonColors(Color.Green),
+        modifier = Modifier
+            .width(400.dp)
+    ) {
+        Text(
+            text = name, modifier = Modifier
+                .size(80.dp, 30.dp)
+                .padding(start = 17.dp, top = 4.dp)
+                .align(Alignment.CenterVertically)
+                .fillMaxWidth(),
+            color = Color.Black
+        )
+    }
 }
 @Composable
 fun LocationTextFields(
@@ -327,28 +412,41 @@ fun ReportDescriptionText(value1: String, value:String){
         )
     }
 }
+
 @Composable
-fun PictureTextFields(value: String, onChange: (String) -> Unit, ){
-    Column (verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally){
-        OutlinedTextField(value = value , onValueChange = onChange,
-           // placeholder = { Text(text = fieldLabel, color = Color.Green)},
-            trailingIcon = {
-                Icon(
-                    modifier = Modifier
-                        .size(35.dp, 35.dp)
-                        .clickable { },
-                    imageVector = Icons.Default.Person,
-                    contentDescription = "Location Icon"
-                ) },
-            keyboardOptions = KeyboardOptions.Default,
-            textStyle = TextStyle(color = Color.Black ), modifier = Modifier
-                .height(50.dp)
-                .fillMaxWidth()
-                .background(Color.White)
-        )
+fun PictureTextFields(value: String, onChange: (String) -> Unit) {
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    val context = LocalContext.current
+
+    // Launcher to pick an image
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        selectedImageUri = uri
+        onChange(uri?.toString() ?: "")
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        // Button to open the image picker
+        Button(onClick = { launcher.launch("image/*") }) {
+            Text(text = "Select Photo")
+        }
+
+        // Display the selected image if available
+        selectedImageUri?.let { uri ->
+            Image(
+                painter = rememberAsyncImagePainter(uri),
+                contentDescription = "Selected Image",
+                modifier = Modifier.size(150.dp)
+            )
+        }
     }
 }
+
 @Composable
 fun DescriptionTextFields(value: String, onChange: (String) -> Unit, fieldLabel: String){
     Column (verticalArrangement = Arrangement.Center,

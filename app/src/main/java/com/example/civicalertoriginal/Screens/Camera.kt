@@ -1,136 +1,112 @@
 package com.example.civicalertoriginal.Screens
 
-import android.Manifest
+import android.app.Activity
 import android.content.Context
-import android.content.pm.PackageManager
-import android.os.Build
-import android.os.Environment
-import android.view.ViewGroup
-import androidx.activity.ComponentActivity
-import androidx.annotation.RequiresApi
-import androidx.camera.core.*
-import androidx.camera.core.ImageCapture
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.compose.foundation.layout.*
+import android.content.Intent
+import android.net.Uri
+import android.provider.MediaStore
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.LifecycleOwner
 import androidx.navigation.NavController
-import java.io.File
-import java.text.SimpleDateFormat
-import java.util.*
+import coil.compose.rememberAsyncImagePainter
+import com.google.firebase.ktx.Firebase
+import com.google.firebase.storage.ktx.storage
+import java.util.UUID
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun CameraScreen(navController: NavController) {
+fun ImageSelectionScreen(navController: NavController) {
     val context = LocalContext.current
-    val lifecycleOwner = LocalContext.current as LifecycleOwner
-    val hasCameraPermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.CAMERA
-            ) == PackageManager.PERMISSION_GRANTED
-        )
-    }
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var isUploading by remember { mutableStateOf(false) }
 
-    // State to hold the image capture instance
-    var imageCapture: ImageCapture? by remember { mutableStateOf(null) }
-
-    // State to hold the preview view
-    val previewView = remember {
-        androidx.camera.view.PreviewView(context).apply {
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-        }
-    }
-
-    LaunchedEffect(key1 = hasCameraPermission) {
-        if (hasCameraPermission) {
-            // Initialize CameraX and set up image capture
-            val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
-            cameraProviderFuture.addListener({
-                val cameraProvider = cameraProviderFuture.get()
-                imageCapture = ImageCapture.Builder().build()
-
-                // Bind preview and image capture use cases
-                val preview = Preview.Builder().build().also {
-                    it.setSurfaceProvider(previewView.surfaceProvider)
-                }
-                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-                cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, imageCapture)
-            }, ContextCompat.getMainExecutor(context))
-        }
-    }
-
-    // Surface for camera preview
     Box(modifier = Modifier.fillMaxSize()) {
-        if (hasCameraPermission) {
-            AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
-            Box(modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)) {
-                Button(
-                    onClick = { takePicture(imageCapture, context) },
-                    modifier = Modifier.align(Alignment.BottomCenter)
-                ) {
-                    Text("Take Picture")
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Preview Section
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(bottom = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (selectedImageUri != null) {
+                    Image(
+                        painter = rememberAsyncImagePainter(selectedImageUri),
+                        contentDescription = null,
+                        modifier = Modifier.size(200.dp)
+                    )
+                } else {
+                    Text("No Image Selected")
                 }
             }
-        } else {
-            Box(modifier = Modifier.align(Alignment.Center)) {
-                Button(onClick = {
-                    ActivityCompat.requestPermissions(
-                        context as ComponentActivity,
-                        arrayOf(Manifest.permission.CAMERA),
-                        CAMERA_PERMISSION_REQUEST_CODE
-                    )
-                }) {
-                    Text("Request Camera Permission")
+
+            // Buttons
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { selectImageFromGallery(context) { uri -> selectedImageUri = uri } }) {
+                    Text("Select Image")
+                }
+                Button(
+                    onClick = {
+                        isUploading = true
+                        selectedImageUri?.let { uri ->
+                            uploadImageToFirebase(uri) { imageName ->
+                                isUploading = false
+                                navController.previousBackStackEntry?.savedStateHandle?.set(
+                                    "imageName",
+                                    imageName
+                                )
+                                navController.popBackStack()
+                            }
+                        }
+                    },
+                    enabled = selectedImageUri != null && !isUploading
+                ) {
+                    Text(if (isUploading) "Uploading..." else "Upload Image")
                 }
             }
         }
     }
 }
 
-private fun takePicture(imageCapture: ImageCapture?, context: Context) {
-    val photoFile = File(
-        context.getExternalFilesDir(Environment.DIRECTORY_PICTURES),
-        "civic_alert_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())}.jpg"
-    )
+private fun uploadImageToFirebase(uri: Uri, onComplete: (String) -> Unit) {
+    val storageRef = Firebase.storage.reference
+    val imageName = "images/${UUID.randomUUID()}.jpg"
+    val imageRef = storageRef.child(imageName)
 
-    val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
-
-    imageCapture?.takePicture(
-        outputOptions,
-        ContextCompat.getMainExecutor(context),
-        object : ImageCapture.OnImageSavedCallback {
-            override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                val savedUri = outputFileResults.savedUri ?: photoFile.absolutePath
-                println("Image saved: $savedUri")
-            }
-
-            override fun onError(exception: ImageCaptureException) {
-                println("Error capturing image: ${exception.message}")
-            }
+    imageRef.putFile(uri)
+        .addOnSuccessListener {
+            onComplete(imageName)
         }
-    )
+        .addOnFailureListener {
+            println("Error uploading image: ${it.message}")
+        }
 }
 
-private const val CAMERA_PERMISSION_REQUEST_CODE = 1001
-
-@RequiresApi(Build.VERSION_CODES.O)
-@androidx.compose.ui.tooling.preview.Preview
-@Composable
-fun CameraPreview() {
-   // CameraScreen(navController = nav)
+// Function to select image from gallery
+private fun selectImageFromGallery(context: Context, onImageSelected: (Uri) -> Unit) {
+    val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+    (context as Activity).startActivityForResult(intent, 100)
 }
