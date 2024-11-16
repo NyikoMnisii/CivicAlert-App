@@ -2,8 +2,6 @@
 
 package com.example.civicalertoriginal.Components
 
-import android.content.Intent
-import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -26,7 +24,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -244,24 +244,20 @@ fun LogBottomButtons(name: String, onClick: () -> Unit, enabled: Boolean){
     }
 }
 @Composable
-fun SignUpText(value: String) {
-    var checkedState by remember { mutableStateOf(false) } // State for checkbox
+fun SignUpText(value: String){
+    Row ( modifier = Modifier.padding(2.dp)){
+        var state by remember { mutableStateOf("") }
+        Text(text = value, modifier = Modifier
+        )
 
-    Row(modifier = Modifier.padding(2.dp)) {
-        Text(text = value, modifier = Modifier.padding(end = 8.dp)) // Added padding to the text
+        Checkbox(checked = false, onCheckedChange = { }, enabled = true, modifier = Modifier
+            .size(20.dp)
+            .padding(end = 16.dp, start = 12.dp)
 
-        Checkbox(
-            checked = checkedState, // Use the state for the checkbox
-            onCheckedChange = { checkedState = it }, // Update the state when clicked
-            enabled = true,
-            modifier = Modifier
-                .size(20.dp)
-                .padding(end = 16.dp, start = 12.dp)
-                .clip(RoundedCornerShape(50.dp))
+            .clip(RoundedCornerShape(50.dp))
         )
     }
 }
-
 @Composable
 fun InstructionText(value: String){
     Text(
@@ -274,21 +270,39 @@ fun InstructionText(value: String){
     )
 }
 @Composable
-fun LocationTextFields(value: String, onChange: (String) -> Unit, fieldLabel: String){
-    Column (verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally){
-        OutlinedTextField(value = value , onValueChange = onChange,
-            placeholder = { Text(text = fieldLabel, color = Color.Green)},
+fun LocationTextFields(
+    value: String,
+    onChange: (String) -> Unit,
+    fieldLabel: String,
+    navController: NavController // Pass the NavController as a parameter
+) {
+    Column(
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onChange,
+            placeholder = {
+                Text(
+                    text = value,
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold
+                )
+            },
             trailingIcon = {
                 Icon(
                     modifier = Modifier
-                        .size(35.dp, 35.dp)
-                        .clickable { },
+                        .size(35.dp)
+                        .clickable { navController.navigate("mapbox") },
                     imageVector = Icons.Default.LocationOn,
-                    contentDescription = "Location Icon"
-                ) },
+                    contentDescription = "Location Icon",
+                    tint = Color.Green
+                )
+            },
             keyboardOptions = KeyboardOptions.Default,
-            textStyle = TextStyle(color = Color.Black ), modifier = Modifier
+            textStyle = TextStyle(color = Color.Black),
+            modifier = Modifier
                 .height(50.dp)
                 .fillMaxWidth()
                 .background(Color.White)
@@ -296,7 +310,7 @@ fun LocationTextFields(value: String, onChange: (String) -> Unit, fieldLabel: St
     }
 }
 @Composable
-fun ReportDescriptionText(value1: String, value:String,){
+fun ReportDescriptionText(value1: String, value:String){
     Column {
 
         Text(text = value1, style = TextStyle(
@@ -314,15 +328,19 @@ fun ReportDescriptionText(value1: String, value:String,){
     }
 }
 @Composable
-fun PictureTextFields(value: String, onChange: (String) -> Unit, navController: NavController){
+fun PictureTextFields(value: String, onChange: (String) -> Unit, ){
     Column (verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally){
         OutlinedTextField(value = value , onValueChange = onChange,
-            // placeholder = { Text(text = fieldLabel, color = Color.Green)},
+           // placeholder = { Text(text = fieldLabel, color = Color.Green)},
             trailingIcon = {
-                Image(painter = painterResource(id = R.drawable.camera), contentDescription ="" ,
-                    modifier = Modifier.clickable { navController.navigate("Camera")}
-                        .size(25.dp)) },
+                Icon(
+                    modifier = Modifier
+                        .size(35.dp, 35.dp)
+                        .clickable { },
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Location Icon"
+                ) },
             keyboardOptions = KeyboardOptions.Default,
             textStyle = TextStyle(color = Color.Black ), modifier = Modifier
                 .height(50.dp)
@@ -336,7 +354,15 @@ fun DescriptionTextFields(value: String, onChange: (String) -> Unit, fieldLabel:
     Column (verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally){
         OutlinedTextField(value = value , onValueChange = onChange,
-            placeholder = { Text(text = fieldLabel, color = Color.Green)},
+           placeholder = { Text(text = fieldLabel, color = Color.Green)},
+            trailingIcon = {
+                Icon(
+                    modifier = Modifier
+                        .size(35.dp, 35.dp)
+                        .clickable { },
+                    imageVector = Icons.Default.Info,
+                    contentDescription = "Location Icon"
+                ) },
             keyboardOptions = KeyboardOptions.Default,
             textStyle = TextStyle(color = Color.Black ), modifier = Modifier
                 .height(50.dp)
@@ -354,7 +380,7 @@ fun ExposedDropdownMenuBox(
     val context = LocalContext.current
     val Incidents= arrayOf("Water", "Electricity", "Pothole", "Other")
     var expanded by remember { mutableStateOf(false) }
-
+   // var selectedText by remember { mutableStateOf(Incidents[0]) }
 
     Box(
         modifier = Modifier
@@ -385,7 +411,7 @@ fun ExposedDropdownMenuBox(
                     DropdownMenuItem(
                         text = { Text(text = item) },
                         onClick = {
-                            onIncidentSelected(item)
+                           onIncidentSelected(item)
                             expanded = false
                             Toast.makeText(context, item, Toast.LENGTH_SHORT).show()
                         }
@@ -459,24 +485,6 @@ fun ProfileText(description: String , value: String, onSave:(String)-> Unit) {
         }
     }
 }
-@Composable
-fun UpdateProfileButton(name: String, onClick: () -> Unit) {
-    Button(
-        onClick = onClick, shape = ButtonDefaults.shape,
-        colors = ButtonDefaults.buttonColors(Color.Green),
-        modifier = Modifier
-            .width(400.dp)
-    ) {
-        Text(
-            text = name, modifier = Modifier
-                .size(80.dp, 30.dp)
-                .padding(start = 17.dp, top = 4.dp)
-                .align(Alignment.CenterVertically)
-                .fillMaxWidth(),
-            color = Color.Black
-        )
-    }
-}
 
 @Composable
 fun BottomButtonsMyProfile(name: String, onClick: () -> Unit) {
@@ -497,25 +505,10 @@ fun BottomButtonsMyProfile(name: String, onClick: () -> Unit) {
     }
 }
 
-
-
-
 @Composable
-fun ContactUsContactButton(value: String, phoneNumber: String) {
-    val context = LocalContext.current
-
-    Button(
-        onClick = {
-            // Dialer Intent
-            val dialIntent = Intent(Intent.ACTION_DIAL).apply {
-                data = Uri.parse("tel:$08299999999")
-            }
-            context.startActivity(dialIntent)
-        },
-        colors = ButtonDefaults.buttonColors(
-            contentColor = Color.Black, containerColor = Color.White
-        ),
-        shape = RoundedCornerShape(15.dp),
+fun ContactUsContactButton(value: String){
+    Button(onClick = { /* contact logic*/ }, colors = ButtonDefaults.buttonColors(
+        contentColor = Color.Black, containerColor = Color.White), shape = RoundedCornerShape(15.dp),
         elevation = ButtonDefaults.buttonElevation(defaultElevation = 16.dp),
         modifier = Modifier
             .padding(8.dp)
@@ -524,34 +517,13 @@ fun ContactUsContactButton(value: String, phoneNumber: String) {
         Icon(imageVector = Icons.Default.Call, contentDescription = "", modifier = Modifier.size(20.dp))
         Spacer(modifier = Modifier.size(5.dp))
         Text(text = value, fontSize = 15.sp)
+
     }
 }
-
 @Composable
-fun ContactUSEmailButton(value: String, email: String) {
-    val context = LocalContext.current
-
-    Button(
-        onClick = {
-            // Email Intent
-            val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
-                data = Uri.parse("mailto:Civicalert300@gmail.com") // Only email apps should handle this
-                putExtra(Intent.EXTRA_EMAIL, arrayOf(email)) // Recipient
-                putExtra(Intent.EXTRA_SUBJECT, "Your Subject Here") // Optional subject
-                putExtra(Intent.EXTRA_TEXT, "Your message here.") // Optional message body
-            }
-
-            // Verify there is an email app installed before trying to open it
-            if (emailIntent.resolveActivity(context.packageManager) != null) {
-                context.startActivity(emailIntent)
-            } else {
-                Toast.makeText(context, "No email app found.", Toast.LENGTH_SHORT).show()
-            }
-        },
-        colors = ButtonDefaults.buttonColors(
-            contentColor = Color.Black, containerColor = Color.White
-        ),
-        shape = RoundedCornerShape(15.dp),
+fun ContactUSEmailButton(value: String){
+    Button(onClick = { /*email logic*/ }, colors = ButtonDefaults.buttonColors(
+        contentColor = Color.Black, containerColor = Color.White), shape = RoundedCornerShape(15.dp),
         elevation = ButtonDefaults.buttonElevation(defaultElevation = 16.dp),
         modifier = Modifier
             .padding(8.dp)
@@ -560,9 +532,10 @@ fun ContactUSEmailButton(value: String, email: String) {
         Icon(imageVector = Icons.Default.Email, contentDescription = "", modifier = Modifier.size(20.dp))
         Spacer(modifier = Modifier.size(5.dp))
         Text(text = value, fontSize = 18.sp)
-    }
-}
 
+    }
+
+}
 @Composable
 fun ContactUsWhatsApp(value: String) {
     val uriHandler = LocalUriHandler.current
@@ -573,19 +546,19 @@ fun ContactUsWhatsApp(value: String) {
             Image(
                 painter = painterResource(id = R.drawable.whatsapp),
                 contentDescription = "",
-                modifier = Modifier.size(35.dp)
+                modifier = Modifier.size(50.dp)
             )
-            Column(modifier = Modifier.padding(start = 10.dp)) {
+            Column {
                 Text(
                     text = value,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "082222222222",
-                    color = Color.Blue,
+                    text = "083 3456 345",
+                    color = Color.Cyan,
                     modifier = Modifier.clickable {
-                        uriHandler.openUri("https://wa.me/082222222222")
+                        uriHandler.openUri("https://wa.me/0833456345")
                     }
                 )
             }
@@ -601,9 +574,9 @@ fun ContactUsWMessanger(value: String) {
             Image(
                 painter = painterResource(id = R.drawable.messenger),
                 contentDescription = "",
-                modifier = Modifier.size(35.dp)
+                modifier = Modifier.size(50.dp)
             )
-            Column(modifier = Modifier.padding(start = 10.dp)) {
+            Column {
                 Text(
                     text = value,
                     fontSize = 20.sp,
@@ -611,7 +584,7 @@ fun ContactUsWMessanger(value: String) {
                 )
                 Text(
                     text = "Facebook",
-                    color = Color.Blue,
+                    color = Color.Cyan,
                     modifier = Modifier.clickable {
                         uriHandler.openUri("https://www.messenger.com/t/facebook")
                     }
@@ -630,9 +603,9 @@ fun ContactUsInsta(value: String) {
             Image(
                 painter = painterResource(id = R.drawable.instagram),
                 contentDescription = "",
-                modifier = Modifier.size(35.dp)
+                modifier = Modifier.size(50.dp)
             )
-            Column(modifier = Modifier.padding(start = 10.dp)){
+            Column {
                 Text(
                     text = value,
                     fontSize = 20.sp,
@@ -640,7 +613,7 @@ fun ContactUsInsta(value: String) {
                 )
                 Text(
                     text = "instagram",
-                    color = Color.Blue,
+                    color = Color.Cyan,
                     modifier = Modifier.clickable {
                         uriHandler.openUri("https://www.instagram.com/")
                     }
@@ -659,9 +632,9 @@ fun ContactUsTwitter(value: String) {
             Image(
                 painter = painterResource(id = R.drawable.twitter),
                 contentDescription = "",
-                modifier = Modifier.size(35.dp)
+                modifier = Modifier.size(50.dp)
             )
-            Column(modifier = Modifier.padding(start = 10.dp)) {
+            Column {
                 Text(
                     text = value,
                     fontSize = 20.sp,
@@ -669,7 +642,7 @@ fun ContactUsTwitter(value: String) {
                 )
                 Text(
                     text = "twitter",
-                    color = Color.Blue,
+                    color = Color.Cyan,
                     modifier = Modifier.clickable {
                         uriHandler.openUri("https://twitter.com/")
                     }
