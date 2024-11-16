@@ -156,7 +156,7 @@ fun AnimatedMakeReports(
         )
 
         // Location Section
-        ReportDescriptionText("Location", "Share the location of the incident")
+        ReportDescriptionText("Location *", "Share the location of the incident")
         LocationTextFields(
             value = locationText,
             onChange = onLocationChange,
@@ -219,7 +219,7 @@ fun handleReportSubmission(
     onFailure: (String) -> Unit
 ) {
     if (photoUri != null) {
-        val photoRef = storage.child("incident_photos/${System.currentTimeMillis()}.jpg")
+        val photoRef = storage.child("incident_photos/${refNumber}.jpg")
         photoRef.putFile(photoUri)
             .addOnSuccessListener {
                 photoRef.downloadUrl.addOnSuccessListener { uri ->

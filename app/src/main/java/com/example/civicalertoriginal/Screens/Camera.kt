@@ -1,5 +1,6 @@
 package com.example.civicalertoriginal.Screens
 
+
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -30,7 +31,7 @@ import coil.compose.rememberAsyncImagePainter
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
 import java.util.UUID
-
+// Function to select image from gallery
 @Composable
 fun ImageSelectionScreen(navController: NavController) {
     val context = LocalContext.current
@@ -65,9 +66,16 @@ fun ImageSelectionScreen(navController: NavController) {
 
             // Buttons
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { selectImageFromGallery(context) { uri -> selectedImageUri = uri } }) {
-                    Text("Select Image")
+                if (selectedImageUri == null) {
+                    Button(onClick = { selectImageFromGallery(context) { uri -> selectedImageUri = uri } }) {
+                        Text("Select Image")
+                    }
+                } else {
+                    Button(onClick = { selectedImageUri = null }) {
+                        Text("Remove Image")
+                    }
                 }
+
                 Button(
                     onClick = {
                         isUploading = true
@@ -91,6 +99,7 @@ fun ImageSelectionScreen(navController: NavController) {
     }
 }
 
+// Function to upload image to Firebase
 private fun uploadImageToFirebase(uri: Uri, onComplete: (String) -> Unit) {
     val storageRef = Firebase.storage.reference
     val imageName = "images/${UUID.randomUUID()}.jpg"

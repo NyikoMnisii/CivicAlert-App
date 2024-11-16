@@ -23,7 +23,7 @@ fun Navigation() {
     val navController = rememberNavController()
 
 
-    NavHost(navController = navController, startDestination = "makeReports") {
+    NavHost(navController = navController, startDestination = "login") {
         composable("registration") {
             Registration(navController)
         }
