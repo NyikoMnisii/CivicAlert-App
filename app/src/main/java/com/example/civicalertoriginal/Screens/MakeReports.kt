@@ -43,12 +43,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.example.civicalertoriginal.Components.DescriptionTextFields
 import com.example.civicalertoriginal.Components.ExposedDropdownMenuBox
 import com.example.civicalertoriginal.Components.LocationTextFields
@@ -61,8 +59,10 @@ import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.StorageReference
+import com.google.firebase.storage.ktx.storage
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+
 data class Reports(
     val incidentType: String = "",
     val location: String = "",
@@ -70,8 +70,10 @@ data class Reports(
     val dateTime: String = "",
     val refNumber: String = "",
     val status: String = "",
-    val userID: String = ""
+    val userID: String = "",
+    val photoUrl: String? = null // Add this field for storing the photo URL
 )
+
 
 class SharedPrefs(context: Context) {
     private val prefs = context.getSharedPreferences("reference_number_prefs", Context.MODE_PRIVATE)
@@ -211,9 +213,22 @@ fun AnimatedMakeReports(navController: NavController, userEmail: String, onClose
                 if (description.isBlank()) {
                     Toast.makeText(context, "Please enter a description", Toast.LENGTH_SHORT).show()
                 } else {
-                    saveReport(userReport)
+                    handleReportSubmission(
+                        report = userReport,
+                        photoUri = pictureUri,
+                        database = myRef,
+                        storage = Firebase.storage.reference,
+                        context = context,
+                        onSuccess = {
+                            showDialog = true
+                        },
+                        onFailure = { errorMessage ->
+                            Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT).show()
+                        }
+                    )
                 }
             }
+
         }
 
         if (showDialog) {
@@ -224,7 +239,47 @@ fun AnimatedMakeReports(navController: NavController, userEmail: String, onClose
         }
     }
 }
+fun handleReportSubmission(
+    report: Reports,
+    photoUri: Uri?,
+    database: DatabaseReference,
+    storage: StorageReference,
+    context: Context,
+    onSuccess: () -> Unit,
+    onFailure: (String) -> Unit
+) {
+    if (photoUri != null) {
+        // Use the reference number as the file name
+        val photoRef = storage.child("incident_photos/${report.refNumber}.jpg")
+        photoRef.putFile(photoUri)
+            .addOnSuccessListener {
+                // Get the download URL of the uploaded file
+                photoRef.downloadUrl.addOnSuccessListener { uri ->
+                    // Update the report with the photo's URL (without modifying description)
+                    val updatedReport = report.copy(photoUrl = uri.toString())
+                    saveReportToDatabase(updatedReport, database, onSuccess, onFailure)
+                }
+            }
+            .addOnFailureListener { onFailure(it.message ?: "Picture not found") }
+    } else {
+        // Save the report without the photo
+        saveReportToDatabase(report, database, onSuccess, onFailure)
+    }
+}
 
+
+fun saveReportToDatabase(
+    report: Reports,
+    database: DatabaseReference,
+    onSuccess: () -> Unit,
+    onFailure: (String) -> Unit
+) {
+    database.child(report.refNumber).setValue(report)
+        .addOnSuccessListener { onSuccess() }
+        .addOnFailureListener { exception -> onFailure(exception.message ?: "Database save failed") }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun SuccessDialog(referenceNumber: String, onDismiss: () -> Unit) {
     AlertDialog(
@@ -258,15 +313,16 @@ fun SuccessDialog(referenceNumber: String, onDismiss: () -> Unit) {
                     )
                 }
                 Text(
-                    text = "Report Successfully Submitted",
+                    text = "Report Successfully\n        Submitted",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = Color.Black
+                    fontSize = 20.sp
                 )
                 Text(
-                    text = "Reference No: $referenceNumber",
-                    fontSize = 14.sp,
-                    color = Color.Gray
+                    text = "Thank you for reporting to us. We\n  will take a look at the incident."
+                )
+                Text(
+                    text = "  Your Reference ID:\n$referenceNumber",
+                    fontWeight = FontWeight.Bold
                 )
             }
         }

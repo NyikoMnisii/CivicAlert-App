@@ -1,8 +1,6 @@
-package com.example.civicalertoriginal.Screens
 
 import android.util.Log
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -24,36 +21,32 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import coil.compose.rememberAsyncImagePainter
 import com.example.civicalertoriginal.Components.CardButton
-import com.example.civicalertoriginal.Components.Logo
 import com.example.civicalertoriginal.R
 import com.google.firebase.database.FirebaseDatabase
-import kotlinx.coroutines.launch
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Dashboard(navController: NavController) {
-    // Coroutine scope to launch async operations
-    val coroutineScope = rememberCoroutineScope()
-
-    // State to hold the recent report
     var recentReport by remember { mutableStateOf<IncidentReport?>(null) }
+    var imageUrl by remember { mutableStateOf<String?>(null) }
 
-    // Launch a coroutine to fetch the recent report
+    // Fetch recent report and image URL when the composable is launched
     LaunchedEffect(Unit) {
-        coroutineScope.launch {
-            recentReport = fetchRecentReport() // Fetching the recent report asynchronously
+        recentReport = fetchRecentReport()
+        recentReport?.let {
+            imageUrl = fetchImageUrl(it.refNumber) // Use `refNumber` for image fetching
         }
     }
 
@@ -72,23 +65,12 @@ fun Dashboard(navController: NavController) {
                         .height(80.dp)
                         .fillMaxWidth()
                 ) {
-                    Logo()
-                    Image(
-                        painter = painterResource(id = R.drawable.profie),
-                        contentDescription = "",
-                        modifier = Modifier
-                            .size(50.dp, 70.dp)
-                            .clickable { navController.navigate("userProfile") }
-                    )
                 }
             }
 
-            // Display recent report if available
             recentReport?.let { report ->
                 item {
-                    Column(
-                        modifier = Modifier.height(300.dp)
-                    ) {
+                    Column(modifier = Modifier.height(300.dp)) {
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -96,32 +78,35 @@ fun Dashboard(navController: NavController) {
                             colors = CardDefaults.cardColors(containerColor = Color.White),
                             elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
                         ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp)
-                            ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
                                 Text(
                                     text = "Recently Reported Incident",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 20.sp
                                 )
+
+                                // Display the image or placeholder
                                 Image(
-                                    painter = painterResource(id = R.drawable.photo),
+                                    painter = rememberAsyncImagePainter(
+                                        model = imageUrl ?: R.drawable.photo // Placeholder image
+                                    ),
                                     contentDescription = "Picture of reported incident",
                                     modifier = Modifier.height(150.dp)
                                 )
-                                Text(text = report.description, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                                Text(text = report.location)
-                                Text(text = report.dateTime)
-                                Text(text = report.incidentType, color = Color.Blue)
+
+                                Text(text = report.description, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                Text(text = report.location, fontSize = 16.sp)
+                                Text(text = report.dateTime, fontSize = 16.sp)
+                                Text(text = report.incidentType, color = Color.Blue, fontSize = 16.sp)
                             }
                         }
                     }
                 }
             } ?: item {
-                // Display a placeholder or message if there's no recent report
-                Text("No recent report available", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                Text("No recent report available", fontWeight = FontWeight.Bold, color = Color.Gray  , fontSize = 20.sp)
             }
 
+            // Other UI components
             item {
                 Row(
                     modifier = Modifier
@@ -151,7 +136,7 @@ fun Dashboard(navController: NavController) {
                     CardButton(
                         iconRes = R.drawable.headphones,
                         label = "Help & Support",
-                        onClick =  { navController.navigate("helpSupport") }
+                        onClick = { navController.navigate("helpSupport") }
                     )
                     CardButton(
                         iconRes = R.drawable.emergency_contacts,
@@ -161,24 +146,26 @@ fun Dashboard(navController: NavController) {
                 }
             }
 
-            // Spacer for additional layout
             item {
-                Row(
-                    modifier = Modifier.height(20.dp)
-                ) {
-                    Spacer(modifier = Modifier.height(20.dp))
-                }
+                Spacer(modifier = Modifier.height(20.dp))
             }
         }
     }
 }
-data class IncidentReport(
-    val description: String,
-    val location: String,
-    val dateTime: String,
-    val incidentType: String
-)
 
+// Fetch image URL from Firebase Storage
+suspend fun fetchImageUrl(refNumber: String): String? {
+    val storage = FirebaseStorage.getInstance()
+    val photoRef = storage.reference.child("incident_photos/$refNumber.jpg")
+    return try {
+        photoRef.downloadUrl.await().toString()
+    } catch (e: Exception) {
+        Log.e("fetchImageUrl", "Error fetching image URL: $refNumber", e)
+        null
+    }
+}
+
+// Fetch the most recent report from Firebase Database
 suspend fun fetchRecentReport(): IncidentReport? {
     val database = FirebaseDatabase.getInstance()
     val reportsRef = database.getReference("Make Report Instance")
@@ -186,21 +173,33 @@ suspend fun fetchRecentReport(): IncidentReport? {
     return try {
         val dataSnapshot = reportsRef.get().await()
         val reports = dataSnapshot.children.mapNotNull { snapshot ->
-            val description = snapshot.child("description").getValue(String::class.java) ?: return@mapNotNull null
-            val location = snapshot.child("location").getValue(String::class.java) ?: return@mapNotNull null
-            val dateTime = snapshot.child("dateTime").getValue(String::class.java) ?: return@mapNotNull null
-            val incidentType = snapshot.child("incidentType").getValue(String::class.java) ?: return@mapNotNull null
+            val description = snapshot.child("description").getValue(String::class.java)
+            val location = snapshot.child("location").getValue(String::class.java)
+            val dateTime = snapshot.child("dateTime").getValue(String::class.java)
+            val incidentType = snapshot.child("incidentType").getValue(String::class.java)
+            val refNumber = snapshot.child("refNumber").getValue(String::class.java)
 
-            IncidentReport(description, location, dateTime, incidentType)
+            if (description != null && location != null && dateTime != null && incidentType != null && refNumber != null) {
+                IncidentReport(description, location, dateTime, incidentType, refNumber)
+            } else {
+                null
+            }
         }
 
-        reports.maxByOrNull { it.dateTime } // Find the report with the latest dateTime
-            .also {
-                Log.d("fetchRecentReport", "Fetched most recent report: $it") // Debug statement
-            }
+        reports.maxByOrNull { it.dateTime }
     } catch (e: Exception) {
-        e.printStackTrace()
-        Log.e("fetchRecentReport", "Error fetching report", e) // Error log
+        Log.e("fetchRecentReport", "Error fetching report", e)
         null
     }
 }
+
+// Incident report data class
+data class IncidentReport(
+    val description: String,
+    val location: String,
+    val dateTime: String,
+    val incidentType: String,
+    val refNumber: String
+)
+
+

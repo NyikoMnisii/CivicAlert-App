@@ -1,6 +1,7 @@
 package com.example.civicalertoriginal.Components
 
 
+import Dashboard
 import LogIn
 import android.os.Build
 import androidx.annotation.RequiresApi
@@ -10,7 +11,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import civicalertoriginal.Screen.MakeReports
 import com.example.civicalertoriginal.Screens.ContactUs
-import com.example.civicalertoriginal.Screens.Dashboard
 import com.example.civicalertoriginal.Screens.ForgotPassword
 import com.example.civicalertoriginal.Screens.HelpAndSupport
 import com.example.civicalertoriginal.Screens.Registration
