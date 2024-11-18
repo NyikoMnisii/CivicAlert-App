@@ -96,9 +96,10 @@ fun UpdateProfile(navController: NavController) {
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.Face,
+                        imageVector = Icons.Rounded.Person,
                         contentDescription = "",
-                        modifier = Modifier.size(80.dp)
+                        modifier = Modifier.size(80.dp),
+                        tint = Color.Gray
                     )
                     Text(text = "Hi ${user.firstName}", fontSize = 25.sp)
                     Spacer(modifier = Modifier.size(10.dp))

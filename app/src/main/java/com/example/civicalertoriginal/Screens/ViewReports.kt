@@ -47,7 +47,8 @@ data class Report(
     val location: String = "",
     val dateTime: String = "",
     val description: String = "",
-    val imageRes: Int = R.drawable.photo // Replace with actual drawable resource ID
+    val refNumber: String = ""
+
 )
 enum class FilterOption {
     Recent, // Sorting by recent
@@ -88,7 +89,7 @@ fun ViewReports(navController: NavController) {
                 .padding(horizontal = 0.dp, vertical = 16.dp)
         ) {
             Text(
-                text = "Reports",
+                text = "Incidents",
                 fontSize = 25.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier
@@ -102,7 +103,7 @@ fun ViewReports(navController: NavController) {
                 FilterOption.Recent -> reports.sortedByDescending { it.dateTime }
                 FilterOption.Old -> reports.sortedBy { it.dateTime }
             }.filter {
-                it.incidentType.contains(searchText, ignoreCase = true) || it.location.contains(searchText, ignoreCase = true)
+                it.incidentType.contains(searchText, ignoreCase = true) && it.location.contains(searchText, ignoreCase = true)
             }
 
             LazyColumn(
@@ -174,13 +175,7 @@ fun ExpandableReportItem(report: Report, navController: NavController) {
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Image(
-                    painter = painterResource(id = report.imageRes),
-                    contentDescription = "Report Image",
-                    modifier = Modifier
-                        .size(64.dp)
-                        .padding(end = 8.dp)
-                )
+
                 Column(
                     modifier = Modifier
                         .weight(1f)

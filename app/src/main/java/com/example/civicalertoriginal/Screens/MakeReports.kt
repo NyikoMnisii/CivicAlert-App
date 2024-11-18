@@ -105,16 +105,18 @@ fun generateReferenceNumber(context: Context): String {
 fun MakeReports(navController: NavController) {
     var isVisible by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    val auth = FirebaseAuth.getInstance()
+    var locationText by remember { mutableStateOf("") }
+
+
+    val sharedP = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+    locationText = sharedP.getString("incidentAddress", "").toString()
+
 
     LaunchedEffect(Unit) {
         isVisible = true
     }
 
     Surface(color = Color.White) {
-        val currentUser = auth.currentUser
-        val email = currentUser?.email ?: ""
-
         AnimatedVisibility(
             visible = isVisible,
             enter = slideInVertically(
@@ -126,21 +128,32 @@ fun MakeReports(navController: NavController) {
                 animationSpec = tween(1000, easing = LinearEasing)
             )
         ) {
-            AnimatedMakeReports(navController, email) {
-                isVisible = false
-                navController.navigate("Dashboard")
+            // Define onClose action with explicit type
+            val onClose: () -> Unit = {
+                // Handle the close action, e.g., navigate back
+                navController.popBackStack()
             }
+
+            // Pass the mutable locationText and the onClose function to AnimatedMakeReports
+            AnimatedMakeReports(navController, locationText, onLocationChange = { newLocation ->
+                locationText = newLocation
+            }, onClose = onClose)
         }
     }
-}
+    }
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun AnimatedMakeReports(navController: NavController, userEmail: String, onClose: () -> Unit) {
+fun AnimatedMakeReports(navController: NavController, locationText: String,
+                        onLocationChange: (String) -> Unit,
+                        onClose: () -> Unit ) {
     val database = Firebase.database
+    val auth = FirebaseAuth.getInstance()
+    val currentUser = auth.currentUser
+    val userEmail = currentUser?.email ?: "unkown"
+
     val myRef = database.getReference("Make Report Instance")
     var pictureUri: Uri? by remember { mutableStateOf(null) }
-    var location by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     val context = LocalContext.current
     val currentDateTime = LocalDateTime.now()
@@ -178,7 +191,19 @@ fun AnimatedMakeReports(navController: NavController, userEmail: String, onClose
             selectedIncident = selectedIncident,
             onIncidentSelected = { newIncident -> selectedIncident = newIncident })
 
-        LocationTextFields(value = location, onChange = { location = it }, fieldLabel = "Enter location")
+        ReportDescriptionText(
+            value1 = "Location",
+            value = "Share the location of the incident"
+        )
+        LocationTextFields(
+            value = locationText,
+            onChange = { updatedLocation ->
+                onLocationChange(updatedLocation)
+            },
+            fieldLabel = "Enter location",
+            navController = navController
+        )
+
 
         ReportDescriptionText("Photos (Optional)", "Take photos of the incident you are reporting")
         PictureTextFields(value = pictureUri?.toString() ?: "", onChange = { pictureUri = Uri.parse(it) })
@@ -188,12 +213,12 @@ fun AnimatedMakeReports(navController: NavController, userEmail: String, onClose
 
         val userReport = Reports(
             incidentType = selectedIncident,
-            location = location,
+            location = locationText,
             description = description,
             dateTime = formattedDateTime,
             refNumber = referenceNumber,
             status = "Submitted",
-            userID = userEmail
+             userID = userEmail
         )
 
         fun saveReport(report: Reports) {

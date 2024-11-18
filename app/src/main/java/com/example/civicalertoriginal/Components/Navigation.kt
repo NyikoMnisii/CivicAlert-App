@@ -13,6 +13,7 @@ import civicalertoriginal.Screen.MakeReports
 import com.example.civicalertoriginal.Screens.ContactUs
 import com.example.civicalertoriginal.Screens.ForgotPassword
 import com.example.civicalertoriginal.Screens.HelpAndSupport
+import com.example.civicalertoriginal.Screens.MapBoxScreen
 import com.example.civicalertoriginal.Screens.Registration
 import com.example.civicalertoriginal.Screens.UpdateProfile
 import com.example.civicalertoriginal.Screens.ViewFullReport
@@ -50,6 +51,12 @@ fun Navigation (){
         }
         composable("helpSupport"){
             HelpAndSupport(navController)
+        }
+        composable("mapbox") {
+            MapBoxScreen(navController = navController) { selectedLocation ->
+
+                navController.previousBackStackEntry?.savedStateHandle?.set("selectedLocation", selectedLocation)
+            }
         }
         composable("viewReport/{reportId}") { backStackEntry ->
             val reportId = backStackEntry.arguments?.getString("reportId") ?: ""
