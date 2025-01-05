@@ -105,10 +105,10 @@ The system ensures efficient tracking and resolution of these incidents by:
 This project is protected under **All Rights Reserved**.  
 Unauthorized use, copying, distribution, or modification of this project is strictly prohibited without explicit permission from the authors.
 
-For inquiries about using this project, contact **Nyiko Mnisi** at [nyiko.mnisi@example.com](mailto:nyikodeartkid@gmail.com).
+For inquiries about using this project, contact **Nyiko Mnisi** at [nyikodeartkid@gmail.com](mailto:nyikodeartkid@gmail.com).
 
 ## 📧 Contact
-For more information, feel free to contact **Nyiko Mnisi** at [nyiko.mnisi@example.com](mailto:nyikodeartkid@gmail.com).
+For more information, feel free to contact **Nyiko Mnisi** at [nyikodeartkid@gmail.com](mailto:nyikodeartkid@gmail.com).
 
 ---
 
